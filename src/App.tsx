@@ -1,5 +1,5 @@
 import LZString from "lz-string";
-import { InferenceSession, Tensor } from "onnxruntime-web";
+import { env, InferenceSession, Tensor } from "onnxruntime-web";
 import React, { useContext, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import "./assets/scss/App.css";
@@ -88,16 +88,18 @@ const App = () => {
   useEffect(() => {
     const initModel = async () => {
       try {
-        if (process.env.MODEL_DIR === undefined) return;
-        const URL: string = process.env.MODEL_DIR;
+        const URL: string = "/sam.onnx";
+        env.wasm.wasmPaths =
+          "https://cdn.jsdelivr.net/npm/onnxruntime-web@latest/dist/";
         const model = await InferenceSession.create(URL);
         setModel(model);
       } catch (e) {
         console.log(e);
       }
       try {
-        if (process.env.MULTI_MASK_MODEL_DIR === undefined) return;
-        const URL2: string = process.env.MULTI_MASK_MODEL_DIR;
+        const URL2: string = "/sam.onnx";
+        env.wasm.wasmPaths =
+          "https://cdn.jsdelivr.net/npm/onnxruntime-web@latest/dist/";
         const multiMaskModel = await InferenceSession.create(URL2);
         setMultiMaskModel(multiMaskModel);
       } catch (e) {

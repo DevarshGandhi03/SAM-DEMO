@@ -9,11 +9,10 @@ import {
   setParmsandQueryEraseModelProps,
   setParmsandQueryModelProps,
 } from "./Interface";
-import axios from "axios";
 
 const API_ENDPOINT = "https://vedas.sac.gov.in/satsam/api/get_embeddings";
 const ALL_MASK_API_ENDPOINT = "https://vedas.sac.gov.in/satsam/api/get_embeddings";
-const ERASE_API_ENDPOINT = "https://vedas.sac.gov.in/satsam/api/get_embeddings";
+const ERASE_API_ENDPOINT = "process.env.ERASE_API_ENDPOINT";
 
 const setParmsandQueryModel = ({
   width,
@@ -45,7 +44,7 @@ const setParmsandQueryModel = ({
           shouldNotFetchAllModel,
         });
     },
-    "image/png",
+    "image/jpeg",
     1.0
   );
 };
@@ -61,20 +60,14 @@ const queryModelReturnTensors = async ({
 }: queryModelReturnTensorsProps) => {
   if (!API_ENDPOINT) return;
   if (!ALL_MASK_API_ENDPOINT) return;
-  const headers = {
-    "Content-Type": "multipart/form-data", 
-  };
-  const formData = new FormData();
-  formData.append("image", blob);
+  const formData=new FormData()
+    formData.append("image",blob)
   const segRequest =
     imgName && !shouldDownload
       ? fetch(`/assets/gallery/${imgName}.txt`)
       : fetch(`${API_ENDPOINT}`, {
-        method: "POST",
-        body: formData,
-        headers:headers,
-        credentials:"omit",
-        mode: "no-cors",
+          method: "POST",
+          body: formData,
         });
   segRequest.then(async (segResponse) => {
     if (shouldDownload) {
@@ -83,46 +76,39 @@ const queryModelReturnTensors = async ({
       downloadBlob(segResponseBlob, imgName);
     }
     const segJSON = await segResponse.json();
-    const embedArr = segJSON.map((arrStr: string) => {
-      const binaryString = window.atob(arrStr);
-      const uint8arr = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        uint8arr[i] = binaryString.charCodeAt(i);
-      }
-      const float32Arr = new Float32Array(uint8arr.buffer);
-      return float32Arr;
-    });
-    const lowResTensor = new Tensor("float32", embedArr[0], [1, 256, 64, 64]);
+    // const embedArr = segJSON.map((arrStr: string) => {
+    //   const binaryString = window.atob(arrStr);
+    //   const uint8arr = new Uint8Array(binaryString.length);
+    //   for (let i = 0; i < binaryString.length; i++) {
+    //     uint8arr[i] = binaryString.charCodeAt(i);
+    //   }
+    //   const float32Arr = new Float32Array(uint8arr.buffer);
+    //   return float32Arr;
+    // });
+    const lowResTensor = new Tensor("float32", new Float32Array(segJSON.embeddings), [1, 256, 64, 64]);
     handleSegModelResults({
       tensor: lowResTensor,
     });
   });
   if (!shouldNotFetchAllModel) {
-    const headers = {
-      "Content-Type": "multipart/form-data", 
-    };
-    const formData = new FormData();
-    formData.append("image", blob);
     const allImgName = imgName + ".all";
+    const formData=new FormData()
+    formData.append("image",blob)
+    
     const allRequest =
       imgName && !shouldDownload
         ? fetch(`/assets/gallery/${allImgName}.txt`)
-        :  axios.post(
-          "https://vedas.sac.gov.in/satsam/api/get_embeddings",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-            withCredentials: false, // Allow credentials if needed
-          }
-        );
-    allRequest.then(async (allResponse:any) => {
+        : fetch(`${ALL_MASK_API_ENDPOINT}`, {
+            method: "POST",
+            body: formData,
+          });
+    allRequest.then(async (allResponse) => {
       if (shouldDownload) {
-        const allResponseBlob = new Blob([allResponse.data]); 
+        const allResponseClone = allResponse.clone();
+        const allResponseBlob = await allResponseClone.blob();
         downloadBlob(allResponseBlob, allImgName);
       }
-      const allJSON = await allResponse.data;
+      const allJSON = await allResponse.json();
       handleAllModelResults({
         allJSON,
         image_height,
